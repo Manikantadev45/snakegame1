@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Worms Zone Clone (Fixed Movement)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    html,body{margin:0;height:100%;background:#0b1220;overflow:hidden}
+    canvas{display:block;width:100%;height:100%;}
+  </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+window.addEventListener("resize",resize);resize();
+
+const worm={segments:[],length:80,angle:0,speed:2};
+const foods=[];
+const foodCount=30;
+let mouse={x:canvas.width/2,y:canvas.height/2};
+let turbo=false;
+
+// initialize worm
+for(let i=0;i<worm.length;i++){
+  worm.segments.push({x:canvas.width/2 - i*4,y:canvas.height/2});
+}
+
+// spawn food
+function spawnFood(){
+  return {
+    x:Math.random()*canvas.width,
+    y:Math.random()*canvas.height,
+    color:`hsl(${Math.random()*360} 80% 60%)`
+  };
+}
+for(let i=0;i<foodCount;i++) foods.push(spawnFood());
+
+// input
+canvas.addEventListener("mousemove",e=>{
+  mouse.x=e.clientX;mouse.y=e.clientY;
+});
+canvas.addEventListener("mousedown",()=>turbo=true);
+canvas.addEventListener("mouseup",()=>turbo=false);
+canvas.addEventListener("touchstart",e=>{
+  turbo=true;
+  const t=e.touches[0];
+  mouse.x=t.clientX;mouse.y=t.clientY;
+},{passive:true});
+canvas.addEventListener("touchmove",e=>{
+  const t=e.touches[0];
+  mouse.x=t.clientX;mouse.y=t.clientY;
+},{passive:true});
+canvas.addEventListener("touchend",()=>turbo=false);
+
+function update(){
+  const head=worm.segments[0];
+  const dx=mouse.x-head.x;
+  const dy=mouse.y-head.y;
+  const targetAngle=Math.atan2(dy,dx);
+  // smooth turn
+  const diff=(targetAngle-worm.angle+Math.PI*3)%(Math.PI*2)-Math.PI;
+  worm.angle+=diff*0.1;
+  const moveSpeed=worm.speed*(turbo?2.2:1);
+  const newX=head.x+Math.cos(worm.angle)*moveSpeed;
+  const newY=head.y+Math.sin(worm.angle)*moveSpeed;
+  worm.segments.unshift({x:newX,y:newY});
+  while(worm.segments.length>worm.length) worm.segments.pop();
+
+  // eat food
+  for(let i=foods.length-1;i>=0;i--){
+    const f=foods[i];
+    const dist=Math.hypot(f.x-newX,f.y-newY);
+    if(dist<10){
+      foods.splice(i,1);
+      worm.length+=10;
+      foods.push(spawnFood());
+    }
+  }
+}
+
+function draw(){
+  ctx.fillStyle="#0b1220";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // draw food
+  for(const f of foods){
+    ctx.beginPath();
+    ctx.fillStyle=f.color;
+    ctx.arc(f.x,f.y,5,0,Math.PI*2);
+    ctx.fill();
+  }
+  // draw worm
+  for(let i=worm.segments.length-1;i>=0;i--){
+    const s=worm.segments[i];
+    const size=6+2*Math.sin(i/5);
+    ctx.beginPath();
+    ctx.fillStyle=`hsl(${i*4} 90% 55%)`;
+    ctx.arc(s.x,s.y,size,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
+ 
